@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
 import 'notes_screen.dart';
+import 'inbox_screen.dart';
+import 'targets_screen.dart';
 import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -25,10 +27,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadDashboardData();
   }
 
-  Future<void> _loadDashboardData() async {
+  Future<void> _loadDashboardData({bool useCache = true}) async {
     setState(() => _loadingStats = true);
     try {
-      final stats = await _apiService.getDashboardStats();
+      final stats = await _apiService.getDashboardStats(useCache: useCache);
       if (mounted) {
         setState(() {
           _stats = stats;
@@ -47,6 +49,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<Widget> screens = [
       _buildDashboardView(),
       const NotesScreen(),
+      const InboxScreen(),
+      const TargetsScreen(),
       const SettingsScreen(),
     ];
 
@@ -70,6 +74,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: 'Notes',
           ),
           NavigationDestination(
+            icon: Icon(Icons.inbox_outlined),
+            selectedIcon: Icon(Icons.inbox),
+            label: 'Inbox',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.track_changes_outlined),
+            selectedIcon: Icon(Icons.track_changes),
+            label: 'Targets',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
@@ -82,7 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildDashboardView() {
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _loadDashboardData,
+        onRefresh: () => _loadDashboardData(useCache: false),
         child: CustomScrollView(
           slivers: [
             // App Bar
@@ -91,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh),
-                  onPressed: _loadDashboardData,
+                  onPressed: () => _loadDashboardData(useCache: false),
                 ),
                 Consumer<ThemeProvider>(
                   builder: (context, provider, _) {
@@ -209,11 +223,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         GridView.count(
           crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.5,
+          childAspectRatio: 2.0,
           children: [
             _buildStatCard(
               'Total Notes',
@@ -253,30 +267,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(8.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               value,
               style: Theme.of(
                 context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               title,
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

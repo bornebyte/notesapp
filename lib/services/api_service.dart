@@ -2,7 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/note.dart';
+import '../models/notification.dart';
+import '../models/target_date.dart';
+import '../models/api_token.dart';
 import 'storage_service.dart';
+import 'cache_service.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -17,6 +21,7 @@ class ApiException implements Exception {
 
 class ApiService {
   final StorageService _storage = StorageService();
+  final CacheService _cache = CacheService();
   String? _cachedDomain;
   String? _cachedToken;
 
@@ -38,6 +43,11 @@ class ApiService {
   void clearCache() {
     _cachedDomain = null;
     _cachedToken = null;
+    _cache.clear();
+  }
+
+  void clearDataCache() {
+    _cache.clear();
   }
 
   // Handle API errors
@@ -157,7 +167,14 @@ class ApiService {
   }
 
   // Get all notes
-  Future<List<Note>> getNotes({String? type}) async {
+  Future<List<Note>> getNotes({String? type, bool useCache = true}) async {
+    final cacheKey = 'notes_${type ?? 'all'}';
+
+    if (useCache) {
+      final cached = _cache.get<List<Note>>(cacheKey);
+      if (cached != null) return cached;
+    }
+
     try {
       final domain = await baseUrl;
       final headers = await _headers;
@@ -181,7 +198,9 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) {
-          return data.map((json) => Note.fromJson(json)).toList();
+          final notes = data.map((json) => Note.fromJson(json)).toList();
+          _cache.set(cacheKey, notes);
+          return notes;
         }
         return [];
       } else {
@@ -259,6 +278,8 @@ class ApiService {
           );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        _cache.clearPattern('notes_');
+        _cache.remove('dashboard_stats');
         return json.decode(response.body);
       } else {
         throw _handleError(null, statusCode: response.statusCode);
@@ -294,6 +315,8 @@ class ApiService {
           );
 
       if (response.statusCode == 200) {
+        _cache.clearPattern('notes_');
+        _cache.remove('dashboard_stats');
         return json.decode(response.body);
       } else {
         throw _handleError(null, statusCode: response.statusCode);
@@ -328,6 +351,8 @@ class ApiService {
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw _handleError(null, statusCode: response.statusCode);
       }
+      _cache.clearPattern('notes_');
+      _cache.remove('dashboard_stats');
     } catch (e) {
       if (e is ApiException) rethrow;
       throw _handleError(e);
@@ -357,6 +382,8 @@ class ApiService {
           );
 
       if (response.statusCode == 200) {
+        _cache.clearPattern('notes_');
+        _cache.remove('dashboard_stats');
         return json.decode(response.body);
       } else {
         throw _handleError(null, statusCode: response.statusCode);
@@ -390,6 +417,8 @@ class ApiService {
           );
 
       if (response.statusCode == 200) {
+        _cache.clearPattern('notes_');
+        _cache.remove('dashboard_stats');
         return json.decode(response.body);
       } else {
         throw _handleError(null, statusCode: response.statusCode);
@@ -401,7 +430,14 @@ class ApiService {
   }
 
   // Get dashboard stats
-  Future<Map<String, dynamic>> getDashboardStats() async {
+  Future<Map<String, dynamic>> getDashboardStats({bool useCache = true}) async {
+    const cacheKey = 'dashboard_stats';
+
+    if (useCache) {
+      final cached = _cache.get<Map<String, dynamic>>(cacheKey);
+      if (cached != null) return cached;
+    }
+
     try {
       final domain = await baseUrl;
       final headers = await _headers;
@@ -419,7 +455,9 @@ class ApiService {
           );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final stats = json.decode(response.body);
+        _cache.set(cacheKey, stats);
+        return stats;
       } else {
         throw _handleError(null, statusCode: response.statusCode);
       }
@@ -429,14 +467,29 @@ class ApiService {
     }
   }
 
-  // Get notifications
-  Future<List<dynamic>> getNotifications() async {
+  // Inbox/Notifications methods (backend uses /api/notifications)
+  Future<Map<String, dynamic>> getNotifications({
+    String filter = '*',
+    bool useCache = true,
+  }) async {
+    final cacheKey = 'notifications_$filter';
+
+    if (useCache) {
+      final cached = _cache.get<Map<String, dynamic>>(cacheKey);
+      if (cached != null) return cached;
+    }
+
     try {
       final domain = await baseUrl;
       final headers = await _headers;
 
       final response = await http
-          .get(Uri.parse('$domain/api/notifications'), headers: headers)
+          .get(
+            Uri.parse(
+              '$domain/api/notifications?filter=${Uri.encodeComponent(filter)}',
+            ),
+            headers: headers,
+          )
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -449,12 +502,287 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data is List) {
-          return data;
+        // API returns [notifications, filters]
+        final result = {
+          'notifications': (data[0] as List)
+              .map((json) => Notification.fromJson(json))
+              .toList(),
+          'filters': (data[1] as List)
+              .map((json) => FilterOption.fromJson(json))
+              .toList(),
+        };
+
+        _cache.set(cacheKey, result);
+        return result;
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  // Targets/Goals methods (backend uses /api/targetdate)
+  Future<List<TargetDate>> getTargetDates({bool useCache = true}) async {
+    const cacheKey = 'target_dates';
+
+    if (useCache) {
+      final cached = _cache.get<List<TargetDate>>(cacheKey);
+      if (cached != null) return cached;
+    }
+
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .get(Uri.parse('$domain/api/targetdate'), headers: headers)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final targets = (data as List)
+            .map((json) => TargetDate.fromJson(json))
+            .toList();
+        _cache.set(cacheKey, targets);
+        return targets;
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  Future<TargetDate> createTargetDate(TargetDate target) async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .post(
+            Uri.parse('$domain/api/targetdate'),
+            headers: headers,
+            body: json.encode(target.toJson()),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _cache.remove('target_dates');
+        return TargetDate.fromJson(json.decode(response.body));
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  Future<TargetDate> updateTargetDate(int id, TargetDate target) async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .put(
+            Uri.parse('$domain/api/targetdate/$id'),
+            headers: headers,
+            body: json.encode(target.toJson()),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode == 200) {
+        _cache.remove('target_dates');
+        return TargetDate.fromJson(json.decode(response.body));
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> deleteTargetDate(int id) async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .delete(Uri.parse('$domain/api/targetdate/$id'), headers: headers)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+      _cache.remove('target_dates');
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  // Settings API methods
+  Future<void> changePassword(String newPassword) async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .put(
+            Uri.parse('$domain/api/settings/password'),
+            headers: headers,
+            body: json.encode({'newPassword': newPassword}),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode != 200) {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  // API Token management
+  Future<List<ApiToken>> getApiTokens() async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .get(Uri.parse('$domain/api/auth/token'), headers: headers)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final tokens = (data['tokens'] as List)
+              .map((json) => ApiToken.fromJson(json))
+              .toList();
+          return tokens;
         }
         return [];
       } else {
         throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  Future<String> createApiToken(String name) async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .post(
+            Uri.parse('$domain/api/auth/token'),
+            headers: headers,
+            body: json.encode({'name': name}),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return data['token'] as String;
+        }
+        throw ApiException(data['message'] ?? 'Failed to create token');
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> deleteApiToken(int tokenId) async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .delete(
+            Uri.parse('$domain/api/auth/token?id=$tokenId'),
+            headers: headers,
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode != 200) {
+        final data = json.decode(response.body);
+        throw ApiException(data['message'] ?? 'Failed to delete token');
       }
     } catch (e) {
       if (e is ApiException) rethrow;
