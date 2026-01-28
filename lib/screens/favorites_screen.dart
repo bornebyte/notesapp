@@ -6,205 +6,72 @@ import '../providers/notes_provider.dart';
 import '../models/note.dart';
 import '../services/api_service.dart';
 import 'note_editor_screen.dart';
-import 'trash_screen.dart';
-import 'favorites_screen.dart';
 
-class NotesScreen extends StatefulWidget {
-  const NotesScreen({super.key});
+class FavoritesScreen extends StatefulWidget {
+  const FavoritesScreen({super.key});
 
   @override
-  State<NotesScreen> createState() => _NotesScreenState();
+  State<FavoritesScreen> createState() => _FavoritesScreenState();
 }
 
-class _NotesScreenState extends State<NotesScreen> {
-  final TextEditingController _searchController = TextEditingController();
-
+class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<NotesProvider>(context, listen: false).fetchNotes();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverAppBar.large(
-              title: const Text('My Notes'),
-              floating: true,
-              pinned: true,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.star_outline),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const FavoritesScreen(),
-                      ),
-                    );
-                  },
-                  tooltip: 'Favorites',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const TrashScreen(),
-                      ),
-                    );
-                  },
-                  tooltip: 'Trash',
-                ),
-                Consumer<NotesProvider>(
-                  builder: (context, provider, _) {
-                    return PopupMenuButton<SortOrder>(
-                      icon: const Icon(Icons.sort),
-                      onSelected: (order) => provider.setSortOrder(order),
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: SortOrder.updatedDesc,
-                          child: Text('Recently Updated'),
-                        ),
-                        const PopupMenuItem(
-                          value: SortOrder.createdDesc,
-                          child: Text('Recently Created'),
-                        ),
-                        const PopupMenuItem(
-                          value: SortOrder.titleAsc,
-                          child: Text('Title (A-Z)'),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _SearchBarDelegate(
-                child: Container(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  padding: const EdgeInsets.all(16.0),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search notes...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                Provider.of<NotesProvider>(
-                                  context,
-                                  listen: false,
-                                ).setSearchQuery('');
-                              },
-                            )
-                          : null,
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    onChanged: (value) {
-                      Provider.of<NotesProvider>(
-                        context,
-                        listen: false,
-                      ).setSearchQuery(value);
-                    },
+      appBar: AppBar(title: const Text('Favorites')),
+      body: Consumer<NotesProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final favorites = provider.notes.where((note) => note.fav).toList();
+
+          if (favorites.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.star_outline,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No favorite notes yet',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Star notes to see them here',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
               ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => provider.fetchNotes(),
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: favorites.length,
+              itemBuilder: (context, index) {
+                return _buildNoteCard(favorites[index]);
+              },
             ),
-          ];
+          );
         },
-        body: _buildNotesList(),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const NoteEditorScreen()),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('New Note'),
-      ),
-    );
-  }
-
-  Widget _buildNotesList() {
-    return Consumer<NotesProvider>(
-      builder: (context, provider, _) {
-        if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (provider.error != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(height: 16),
-                Text('Error: ${provider.error}'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => provider.fetchNotes(),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (provider.notes.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.note_add_outlined,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No notes yet',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap + to create your first note',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () => provider.fetchNotes(),
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: provider.notes.length,
-            itemBuilder: (context, index) {
-              return _buildNoteCard(provider.notes[index]);
-            },
-          ),
-        );
-      },
     );
   }
 
@@ -227,20 +94,15 @@ class _NotesScreenState extends State<NotesScreen> {
             children: [
               Row(
                 children: [
-                  if (note.fav)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        Icons.star,
-                        size: 16,
-                        color: Colors.amber[700],
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
                     ),
+                    child: Icon(Icons.star, size: 16, color: Colors.amber[700]),
+                  ),
                   if (note.shareid != null && note.shareid!.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.all(4),
@@ -552,29 +414,4 @@ class _NotesScreenState extends State<NotesScreen> {
       return DateFormat('MMM d, y').format(date);
     }
   }
-}
-
-class _SearchBarDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-
-  _SearchBarDelegate({required this.child});
-
-  @override
-  double get minExtent => 80;
-
-  @override
-  double get maxExtent => 80;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return child;
-  }
-
-  @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
-      false;
 }

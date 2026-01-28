@@ -202,8 +202,8 @@ class NotesProvider with ChangeNotifier {
   }
 
   void _applyFiltersAndSort() {
-    // Start with all notes
-    var filtered = List<Note>.from(_notes);
+    // Start with all notes, excluding trashed ones
+    var filtered = List<Note>.from(_notes.where((note) => !note.trash));
 
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
@@ -222,10 +222,13 @@ class NotesProvider with ChangeNotifier {
       }).toList();
     }
 
-    // Sort
+    // Sort based on selected order
     switch (_sortOrder) {
       case SortOrder.updatedDesc:
         filtered.sort((a, b) {
+          // Favorites first, then by date
+          if (a.fav && !b.fav) return -1;
+          if (!a.fav && b.fav) return 1;
           final aDate = a.updatedAtDate ?? a.createdAtDate ?? DateTime(0);
           final bDate = b.updatedAtDate ?? b.createdAtDate ?? DateTime(0);
           return bDate.compareTo(aDate);
@@ -233,6 +236,9 @@ class NotesProvider with ChangeNotifier {
         break;
       case SortOrder.updatedAsc:
         filtered.sort((a, b) {
+          // Favorites first, then by date
+          if (a.fav && !b.fav) return -1;
+          if (!a.fav && b.fav) return 1;
           final aDate = a.updatedAtDate ?? a.createdAtDate ?? DateTime(0);
           final bDate = b.updatedAtDate ?? b.createdAtDate ?? DateTime(0);
           return aDate.compareTo(bDate);
@@ -240,6 +246,9 @@ class NotesProvider with ChangeNotifier {
         break;
       case SortOrder.createdDesc:
         filtered.sort((a, b) {
+          // Favorites first, then by date
+          if (a.fav && !b.fav) return -1;
+          if (!a.fav && b.fav) return 1;
           final aDate = a.createdAtDate ?? DateTime(0);
           final bDate = b.createdAtDate ?? DateTime(0);
           return bDate.compareTo(aDate);
@@ -247,25 +256,31 @@ class NotesProvider with ChangeNotifier {
         break;
       case SortOrder.createdAsc:
         filtered.sort((a, b) {
+          // Favorites first, then by date
+          if (a.fav && !b.fav) return -1;
+          if (!a.fav && b.fav) return 1;
           final aDate = a.createdAtDate ?? DateTime(0);
           final bDate = b.createdAtDate ?? DateTime(0);
           return aDate.compareTo(bDate);
         });
         break;
       case SortOrder.titleAsc:
-        filtered.sort((a, b) => a.title.compareTo(b.title));
+        filtered.sort((a, b) {
+          // Favorites first, then alphabetically
+          if (a.fav && !b.fav) return -1;
+          if (!a.fav && b.fav) return 1;
+          return a.title.compareTo(b.title);
+        });
         break;
       case SortOrder.titleDesc:
-        filtered.sort((a, b) => b.title.compareTo(a.title));
+        filtered.sort((a, b) {
+          // Favorites first, then reverse alphabetically
+          if (a.fav && !b.fav) return -1;
+          if (!a.fav && b.fav) return 1;
+          return b.title.compareTo(a.title);
+        });
         break;
     }
-
-    // Favorite notes always come first
-    filtered.sort((a, b) {
-      if (a.fav && !b.fav) return -1;
-      if (!a.fav && b.fav) return 1;
-      return 0;
-    });
 
     _filteredNotes = filtered;
   }

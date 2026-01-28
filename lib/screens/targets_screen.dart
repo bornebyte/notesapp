@@ -471,33 +471,38 @@ class _TargetsScreenState extends State<TargetsScreen> {
     }
   }
 
-  void _copyShareId(String shareId) {
-    Clipboard.setData(ClipboardData(text: shareId));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Share ID copied to clipboard!',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(shareId, style: const TextStyle(fontSize: 11)),
-                ],
+  Future<void> _copyShareId(String shareId) async {
+    final domain = await _apiService.baseUrl;
+    final shareUrl = '$domain/target-view/$shareId';
+
+    Clipboard.setData(ClipboardData(text: shareUrl));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Share link copied to clipboard!',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(shareUrl, style: const TextStyle(fontSize: 11)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
         ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+      );
+    }
   }
 
   void _showTargetDialog() {

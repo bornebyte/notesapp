@@ -299,7 +299,7 @@ class ApiService {
       noteData['id'] = id;
 
       final response = await http
-          .post(
+          .put(
             Uri.parse('$domain/api/notes'),
             headers: headers,
             body: json.encode(noteData),
@@ -420,6 +420,45 @@ class ApiService {
         _cache.clearPattern('notes_');
         _cache.remove('dashboard_stats');
         return json.decode(response.body);
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  // Create share ID for note
+  Future<String> createNoteShareId(int id) async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .post(
+            Uri.parse('$domain/api/notes/share'),
+            headers: headers,
+            body: json.encode({'id': id}),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final shareId = data['shareid'];
+        if (shareId == null) {
+          throw ApiException('Share ID not returned from server');
+        }
+        _cache.clearPattern('notes_');
+        return shareId as String;
       } else {
         throw _handleError(null, statusCode: response.statusCode);
       }

@@ -15,7 +15,7 @@ class _InboxScreenState extends State<InboxScreen> {
   List<Notification> _allNotifications = [];
   List<FilterOption> _filters = [];
   String _selectedFilter = '*';
-  bool _isLoading = true;
+  bool _isInitialLoad = true;
   String? _error;
 
   @override
@@ -34,10 +34,12 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   Future<void> _loadNotifications({bool useCache = true}) async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    // Clear error on refresh
+    if (_error != null) {
+      setState(() {
+        _error = null;
+      });
+    }
 
     try {
       final result = await _apiService.getNotifications(useCache: useCache);
@@ -45,14 +47,14 @@ class _InboxScreenState extends State<InboxScreen> {
         setState(() {
           _allNotifications = result['notifications'] as List<Notification>;
           _filters = result['filters'] as List<FilterOption>;
-          _isLoading = false;
+          _isInitialLoad = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _error = e.toString();
-          _isLoading = false;
+          _isInitialLoad = false;
         });
       }
     }
@@ -127,11 +129,11 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
+    if (_isInitialLoad && _allNotifications.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
+    if (_error != null && _allNotifications.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
