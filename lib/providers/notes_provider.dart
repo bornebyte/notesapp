@@ -26,6 +26,7 @@ class NotesProvider with ChangeNotifier {
   String? _selectedCategory;
 
   List<Note> get notes => _filteredNotes;
+  List<Note> get allNotes => _notes; // Access to all notes including trashed
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get searchQuery => _searchQuery;
@@ -226,9 +227,6 @@ class NotesProvider with ChangeNotifier {
     switch (_sortOrder) {
       case SortOrder.updatedDesc:
         filtered.sort((a, b) {
-          // Favorites first, then by date
-          if (a.fav && !b.fav) return -1;
-          if (!a.fav && b.fav) return 1;
           final aDate = a.updatedAtDate ?? a.createdAtDate ?? DateTime(0);
           final bDate = b.updatedAtDate ?? b.createdAtDate ?? DateTime(0);
           return bDate.compareTo(aDate);
@@ -236,9 +234,6 @@ class NotesProvider with ChangeNotifier {
         break;
       case SortOrder.updatedAsc:
         filtered.sort((a, b) {
-          // Favorites first, then by date
-          if (a.fav && !b.fav) return -1;
-          if (!a.fav && b.fav) return 1;
           final aDate = a.updatedAtDate ?? a.createdAtDate ?? DateTime(0);
           final bDate = b.updatedAtDate ?? b.createdAtDate ?? DateTime(0);
           return aDate.compareTo(bDate);
@@ -246,9 +241,6 @@ class NotesProvider with ChangeNotifier {
         break;
       case SortOrder.createdDesc:
         filtered.sort((a, b) {
-          // Favorites first, then by date
-          if (a.fav && !b.fav) return -1;
-          if (!a.fav && b.fav) return 1;
           final aDate = a.createdAtDate ?? DateTime(0);
           final bDate = b.createdAtDate ?? DateTime(0);
           return bDate.compareTo(aDate);
@@ -256,9 +248,6 @@ class NotesProvider with ChangeNotifier {
         break;
       case SortOrder.createdAsc:
         filtered.sort((a, b) {
-          // Favorites first, then by date
-          if (a.fav && !b.fav) return -1;
-          if (!a.fav && b.fav) return 1;
           final aDate = a.createdAtDate ?? DateTime(0);
           final bDate = b.createdAtDate ?? DateTime(0);
           return aDate.compareTo(bDate);
@@ -266,17 +255,11 @@ class NotesProvider with ChangeNotifier {
         break;
       case SortOrder.titleAsc:
         filtered.sort((a, b) {
-          // Favorites first, then alphabetically
-          if (a.fav && !b.fav) return -1;
-          if (!a.fav && b.fav) return 1;
           return a.title.compareTo(b.title);
         });
         break;
       case SortOrder.titleDesc:
         filtered.sort((a, b) {
-          // Favorites first, then reverse alphabetically
-          if (a.fav && !b.fav) return -1;
-          if (!a.fav && b.fav) return 1;
           return b.title.compareTo(a.title);
         });
         break;

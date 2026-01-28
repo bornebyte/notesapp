@@ -29,7 +29,7 @@ class _TrashScreenState extends State<TrashScreen> {
         actions: [
           Consumer<NotesProvider>(
             builder: (context, provider, _) {
-              final trashedNotes = provider.notes
+              final trashedNotes = provider.allNotes
                   .where((note) => note.trash)
                   .toList();
               if (trashedNotes.isEmpty) return const SizedBox();
@@ -49,7 +49,7 @@ class _TrashScreenState extends State<TrashScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final trashedNotes = provider.notes
+          final trashedNotes = provider.allNotes
               .where((note) => note.trash)
               .toList();
 
