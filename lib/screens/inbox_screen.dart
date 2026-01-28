@@ -203,10 +203,23 @@ class _InboxScreenState extends State<InboxScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text(
-              notification.message,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    notification.message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _formatTime(notification.createdAtDate),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             Row(
@@ -331,6 +344,11 @@ class _InboxScreenState extends State<InboxScreen> {
       default:
         return Icons.notifications;
     }
+  }
+
+  String _formatTime(DateTime? date) {
+    if (date == null) return '';
+    return DateFormat('h:mm a').format(date);
   }
 
   String _formatDate(DateTime? date) {

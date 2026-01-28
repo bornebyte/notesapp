@@ -299,7 +299,7 @@ class ApiService {
       noteData['id'] = id;
 
       final response = await http
-          .put(
+          .post(
             Uri.parse('$domain/api/notes'),
             headers: headers,
             body: json.encode(noteData),
@@ -523,7 +523,7 @@ class ApiService {
     }
   }
 
-  // Targets/Goals methods (backend uses /api/targetdate)
+  // Targets/Goals methods (backend uses /api/targets)
   Future<List<TargetDate>> getTargetDates({bool useCache = true}) async {
     const cacheKey = 'target_dates';
 
@@ -537,7 +537,7 @@ class ApiService {
       final headers = await _headers;
 
       final response = await http
-          .get(Uri.parse('$domain/api/targetdate'), headers: headers)
+          .get(Uri.parse('$domain/api/targets'), headers: headers)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -564,14 +564,14 @@ class ApiService {
     }
   }
 
-  Future<TargetDate> createTargetDate(TargetDate target) async {
+  Future<void> createTargetDate(TargetDate target) async {
     try {
       final domain = await baseUrl;
       final headers = await _headers;
 
       final response = await http
           .post(
-            Uri.parse('$domain/api/targetdate'),
+            Uri.parse('$domain/api/targets'),
             headers: headers,
             body: json.encode(target.toJson()),
           )
@@ -587,7 +587,8 @@ class ApiService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         _cache.remove('target_dates');
-        return TargetDate.fromJson(json.decode(response.body));
+        // API returns {"success": true, "id": 20}, not the full target
+        return;
       } else {
         throw _handleError(null, statusCode: response.statusCode);
       }
@@ -597,14 +598,14 @@ class ApiService {
     }
   }
 
-  Future<TargetDate> updateTargetDate(int id, TargetDate target) async {
+  Future<void> updateTargetDate(int id, TargetDate target) async {
     try {
       final domain = await baseUrl;
       final headers = await _headers;
 
       final response = await http
           .put(
-            Uri.parse('$domain/api/targetdate/$id'),
+            Uri.parse('$domain/api/targets?id=$id'),
             headers: headers,
             body: json.encode(target.toJson()),
           )
@@ -620,7 +621,8 @@ class ApiService {
 
       if (response.statusCode == 200) {
         _cache.remove('target_dates');
-        return TargetDate.fromJson(json.decode(response.body));
+        // API returns success response, not the full target
+        return;
       } else {
         throw _handleError(null, statusCode: response.statusCode);
       }
@@ -636,7 +638,7 @@ class ApiService {
       final headers = await _headers;
 
       final response = await http
-          .delete(Uri.parse('$domain/api/targetdate/$id'), headers: headers)
+          .delete(Uri.parse('$domain/api/targets?id=$id'), headers: headers)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -651,6 +653,44 @@ class ApiService {
         throw _handleError(null, statusCode: response.statusCode);
       }
       _cache.remove('target_dates');
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  Future<String> generateShareId(int id) async {
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .post(
+            Uri.parse('$domain/api/targets/share'),
+            headers: headers,
+            body: json.encode({'id': id}),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ApiException(
+                'Request timeout. Please check your connection.',
+                type: 'timeout',
+              );
+            },
+          );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _cache.remove('target_dates');
+        final shareId = data['shareid'];
+        if (shareId == null) {
+          throw ApiException('Share ID not returned from server');
+        }
+        return shareId as String;
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
     } catch (e) {
       if (e is ApiException) rethrow;
       throw _handleError(e);

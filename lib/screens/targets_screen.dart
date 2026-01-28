@@ -144,8 +144,8 @@ class _TargetsScreenState extends State<TargetsScreen> {
   }
 
   Widget _buildTargetCard(TargetDate target) {
-    final progress = (target.progressPercentage ?? 0) / 100;
-    final isOverdue = target.isOverdue;
+    final daysDiff = target.daysDifference ?? 0;
+    final isOverdue = daysDiff < 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -158,7 +158,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    target.title,
+                    target.message,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -197,9 +197,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
                 const SizedBox(width: 8),
                 PopupMenuButton<String>(
                   onSelected: (value) async {
-                    if (value == 'edit') {
-                      _showTargetDialog(target: target);
-                    } else if (value == 'delete' && target.id != null) {
+                    if (value == 'delete' && target.id != null) {
                       _confirmDelete(target);
                     } else if (value == 'share' && target.id != null) {
                       await _generateShareId(target);
@@ -209,16 +207,6 @@ class _TargetsScreenState extends State<TargetsScreen> {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, size: 20),
-                          SizedBox(width: 12),
-                          Text('Edit'),
-                        ],
-                      ),
-                    ),
                     if (target.shareId == null)
                       const PopupMenuItem(
                         value: 'share',
@@ -261,35 +249,9 @@ class _TargetsScreenState extends State<TargetsScreen> {
                 ),
               ],
             ),
-            if (target.description != null &&
-                target.description!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                target.description!,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
             const SizedBox(height: 16),
 
-            // Progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                minHeight: 8,
-                backgroundColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isOverdue
-                      ? Colors.red
-                      : Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Time remaining
+            // Date and time remaining
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -301,7 +263,9 @@ class _TargetsScreenState extends State<TargetsScreen> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     Text(
-                      DateFormat('MMM d, y').format(target.targetDate!),
+                      target.targetDate != null
+                          ? DateFormat('MMM d, y').format(target.targetDate!)
+                          : 'No date set',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: isOverdue ? Colors.red : null,
@@ -309,85 +273,54 @@ class _TargetsScreenState extends State<TargetsScreen> {
                     ),
                   ],
                 ),
-                if (isOverdue)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      isOverdue ? 'Past Due' : 'Time Remaining',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      'OVERDUE',
+                    Text(
+                      _formatTimeRemaining(daysDiff),
                       style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.red.shade900,
                         fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: isOverdue
+                            ? Colors.red
+                            : Theme.of(context).colorScheme.primary,
                       ),
                     ),
-                  )
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${target.progressPercentage}% Complete',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      Text(
-                        _formatTimeRemaining(target),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
+                ),
               ],
             ),
 
+            const SizedBox(height: 12),
+
             // Time breakdown
-            if (!isOverdue &&
-                (target.days != null || target.months != null)) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  if (target.months != null && target.months! > 0)
-                    _buildTimeChip(
-                      '${target.months}',
-                      'Months',
-                      Icons.calendar_month,
-                    ),
-                  if (target.days != null)
-                    _buildTimeChip(
-                      '${target.days! % 30}',
-                      'Days',
-                      Icons.calendar_today,
-                    ),
-                  if (target.hours != null && target.days! < 7)
-                    _buildTimeChip(
-                      '${target.hours}',
-                      'Hours',
-                      Icons.access_time,
-                    ),
-                ],
-              ),
-            ],
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: _buildTimeBreakdown(daysDiff),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTimeChip(String value, String label, IconData icon) {
+  Widget _buildTimeChip(
+    String value,
+    String label,
+    IconData icon, {
+    bool isNegative = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
+        color: isNegative
+            ? Colors.red.shade100
+            : Theme.of(context).colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -396,7 +329,9 @@ class _TargetsScreenState extends State<TargetsScreen> {
           Icon(
             icon,
             size: 16,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
+            color: isNegative
+                ? Colors.red.shade900
+                : Theme.of(context).colorScheme.onPrimaryContainer,
           ),
           const SizedBox(width: 6),
           Text(
@@ -404,7 +339,9 @@ class _TargetsScreenState extends State<TargetsScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              color: isNegative
+                  ? Colors.red.shade900
+                  : Theme.of(context).colorScheme.onPrimaryContainer,
             ),
           ),
         ],
@@ -412,17 +349,84 @@ class _TargetsScreenState extends State<TargetsScreen> {
     );
   }
 
-  String _formatTimeRemaining(TargetDate target) {
-    if (target.isOverdue) return 'Overdue';
+  List<Widget> _buildTimeBreakdown(int daysDiff) {
+    final isNegative = daysDiff < 0;
+    final absDays = daysDiff.abs();
+    final chips = <Widget>[];
 
-    if (target.months != null && target.months! > 0) {
-      return '${target.months} months';
-    } else if (target.days != null && target.days! > 0) {
-      return '${target.days} days';
-    } else if (target.hours != null) {
-      return '${target.hours} hours';
+    if (absDays >= 365) {
+      final years = absDays ~/ 365;
+      chips.add(
+        _buildTimeChip(
+          '${isNegative ? "-" : ""}$years',
+          years == 1 ? 'Year' : 'Years',
+          Icons.calendar_today,
+          isNegative: isNegative,
+        ),
+      );
+    }
+
+    if (absDays >= 30) {
+      final months = (absDays % 365) ~/ 30;
+      if (months > 0) {
+        chips.add(
+          _buildTimeChip(
+            '${isNegative ? "-" : ""}$months',
+            months == 1 ? 'Month' : 'Months',
+            Icons.calendar_month,
+            isNegative: isNegative,
+          ),
+        );
+      }
+    }
+
+    if (absDays >= 7) {
+      final weeks = (absDays % 30) ~/ 7;
+      if (weeks > 0) {
+        chips.add(
+          _buildTimeChip(
+            '${isNegative ? "-" : ""}$weeks',
+            weeks == 1 ? 'Week' : 'Weeks',
+            Icons.calendar_view_week,
+            isNegative: isNegative,
+          ),
+        );
+      }
+    }
+
+    final days = absDays % 7;
+    if (days > 0 || chips.isEmpty) {
+      chips.add(
+        _buildTimeChip(
+          '${isNegative ? "-" : ""}$days',
+          days == 1 ? 'Day' : 'Days',
+          Icons.today,
+          isNegative: isNegative,
+        ),
+      );
+    }
+
+    return chips;
+  }
+
+  String _formatTimeRemaining(int daysDiff) {
+    if (daysDiff == 0) return 'Today';
+
+    final isNegative = daysDiff < 0;
+    final absDays = daysDiff.abs();
+    final prefix = isNegative ? '-' : '';
+
+    if (absDays >= 365) {
+      final years = absDays ~/ 365;
+      return '$prefix$years ${years == 1 ? "year" : "years"}';
+    } else if (absDays >= 30) {
+      final months = absDays ~/ 30;
+      return '$prefix$months ${months == 1 ? "month" : "months"}';
+    } else if (absDays >= 7) {
+      final weeks = absDays ~/ 7;
+      return '$prefix$weeks ${weeks == 1 ? "week" : "weeks"}';
     } else {
-      return 'Soon';
+      return '$prefix$absDays ${absDays == 1 ? "day" : "days"}';
     }
   }
 
@@ -431,7 +435,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Target'),
-        content: Text('Are you sure you want to delete "${target.title}"?'),
+        content: Text('Are you sure you want to delete "${target.message}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -452,16 +456,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
 
   Future<void> _generateShareId(TargetDate target) async {
     try {
-      // Generate a random share ID and update the target
-      final shareId = DateTime.now().millisecondsSinceEpoch.toString();
-      final updatedTarget = TargetDate(
-        title: target.title,
-        description: target.description,
-        date: target.date,
-        shareId: shareId,
-      );
-
-      await _apiService.updateTargetDate(target.id!, updatedTarget);
+      final shareId = await _apiService.generateShareId(target.id!);
       await _loadTargets(useCache: false);
 
       if (mounted) {
@@ -505,38 +500,26 @@ class _TargetsScreenState extends State<TargetsScreen> {
     );
   }
 
-  void _showTargetDialog({TargetDate? target}) {
-    final titleController = TextEditingController(text: target?.title ?? '');
-    final descriptionController = TextEditingController(
-      text: target?.description ?? '',
-    );
-    DateTime? selectedDate = target?.targetDate;
+  void _showTargetDialog() {
+    final messageController = TextEditingController();
+    DateTime? selectedDate;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(target == null ? 'New Target' : 'Edit Target'),
+          title: const Text('New Target'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: titleController,
+                  controller: messageController,
                   decoration: const InputDecoration(
                     labelText: 'Title',
                     hintText: 'e.g., Complete project',
                     border: OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
                 ),
                 const SizedBox(height: 16),
                 ListTile(
@@ -559,7 +542,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
                       initialDate:
                           selectedDate ??
                           DateTime.now().add(const Duration(days: 30)),
-                      firstDate: DateTime.now(),
+                      firstDate: DateTime(2000),
                       lastDate: DateTime.now().add(const Duration(days: 3650)),
                     );
                     if (date != null) {
@@ -577,7 +560,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
             ),
             FilledButton(
               onPressed: () async {
-                if (titleController.text.trim().isEmpty) {
+                if (messageController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Please enter a title')),
                   );
@@ -593,29 +576,22 @@ class _TargetsScreenState extends State<TargetsScreen> {
                 }
 
                 try {
+                  // Format date as MM/DD/YYYY
+                  final formattedDate =
+                      '${selectedDate!.month.toString().padLeft(2, '0')}/${selectedDate!.day.toString().padLeft(2, '0')}/${selectedDate!.year}';
+
                   final newTarget = TargetDate(
-                    title: titleController.text.trim(),
-                    description: descriptionController.text.trim().isEmpty
-                        ? null
-                        : descriptionController.text.trim(),
-                    date: selectedDate!.toIso8601String(),
+                    message: messageController.text.trim(),
+                    date: formattedDate,
                   );
 
-                  if (target == null) {
-                    await _apiService.createTargetDate(newTarget);
-                  } else if (target.id != null) {
-                    await _apiService.updateTargetDate(target.id!, newTarget);
-                  }
+                  await _apiService.createTargetDate(newTarget);
 
                   if (context.mounted) {
                     Navigator.pop(context);
                     _loadTargets(useCache: false);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          target == null ? 'Target created' : 'Target updated',
-                        ),
-                      ),
+                      const SnackBar(content: Text('Target created')),
                     );
                   }
                 } catch (e) {
@@ -626,7 +602,7 @@ class _TargetsScreenState extends State<TargetsScreen> {
                   }
                 }
               },
-              child: Text(target == null ? 'Create' : 'Update'),
+              child: const Text('Create'),
             ),
           ],
         ),
