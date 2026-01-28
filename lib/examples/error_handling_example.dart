@@ -23,7 +23,7 @@ class _ErrorHandlingExampleState extends State<ErrorHandlingExample> {
     });
 
     try {
-      final result = await _apiService.login('testuser', 'testpass');
+      final result = await _apiService.login('testpass');
 
       if (mounted) {
         setState(() {

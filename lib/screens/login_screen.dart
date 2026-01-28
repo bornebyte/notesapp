@@ -15,7 +15,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final ApiService _apiService = ApiService();
   final StorageService _storage = StorageService();
@@ -43,7 +42,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
-    _usernameController.dispose();
     _passwordController.dispose();
     _animationController.dispose();
     super.dispose();
@@ -57,10 +55,7 @@ class _LoginScreenState extends State<LoginScreen>
       });
 
       try {
-        final response = await _apiService.login(
-          _usernameController.text.trim(),
-          _passwordController.text,
-        );
+        final response = await _apiService.login(_passwordController.text);
 
         // Save authentication state and token if provided
         if (response['token'] != null) {
@@ -190,28 +185,6 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           if (_errorMessage != null) const SizedBox(height: 16),
 
-                          // Username Field
-                          TextFormField(
-                            controller: _usernameController,
-                            decoration: InputDecoration(
-                              labelText: 'Username',
-                              hintText: 'Enter your username',
-                              prefixIcon: const Icon(Icons.person_outline),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            autofocus: true,
-                            textInputAction: TextInputAction.next,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your username';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-
                           // Password Field
                           TextFormField(
                             controller: _passwordController,
@@ -236,6 +209,7 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                             obscureText: _obscurePassword,
+                            autofocus: true,
                             textInputAction: TextInputAction.done,
                             onFieldSubmitted: (_) => _handleLogin(),
                             validator: (value) {

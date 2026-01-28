@@ -95,17 +95,17 @@ class ApiService {
     return ApiException('An unexpected error occurred: $error');
   }
 
-  // Password-based login
-  Future<Map<String, dynamic>> login(String username, String password) async {
+  // Password-based login (password only, no username)
+  Future<Map<String, dynamic>> login(String password) async {
     try {
       final domain = await baseUrl;
-      final url = '$domain/api/auth';
+      final url = '$domain/api/auth/login';
 
       final response = await http
           .post(
             Uri.parse(url),
             headers: {'Content-Type': 'application/json'},
-            body: json.encode({'username': username, 'password': password}),
+            body: json.encode({'password': password}),
           )
           .timeout(
             const Duration(seconds: 10),
@@ -121,11 +121,7 @@ class ApiService {
         final data = json.decode(response.body);
         return data;
       } else if (response.statusCode == 401) {
-        throw ApiException(
-          'Invalid username or password.',
-          statusCode: 401,
-          type: 'auth',
-        );
+        throw ApiException('Invalid password.', statusCode: 401, type: 'auth');
       } else {
         throw _handleError(null, statusCode: response.statusCode);
       }
