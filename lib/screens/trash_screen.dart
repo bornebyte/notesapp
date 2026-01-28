@@ -94,28 +94,40 @@ class _TrashScreenState extends State<TrashScreen> {
   }
 
   Widget _buildTrashCard(Note note) {
-    final updatedDate = note.updatedAtDate ?? note.createdAtDate;
+    final createdDate = note.createdAtDate;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Text(
                     note.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
                       fontSize: 18,
+                      height: 1.3,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 PopupMenuButton<String>(
                   onSelected: (value) async {
                     if (value == 'restore') {
@@ -162,8 +174,9 @@ class _TrashScreenState extends State<TrashScreen> {
               style: TextStyle(
                 color: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
-                fontSize: 15,
+                ).textTheme.bodyMedium?.color?.withValues(alpha: 0.65),
+                fontSize: 14,
+                height: 1.5,
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -181,7 +194,7 @@ class _TrashScreenState extends State<TrashScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  _formatDate(updatedDate),
+                  createdDate != null ? _formatDate(createdDate) : 'No date',
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(
@@ -286,12 +299,15 @@ class _TrashScreenState extends State<TrashScreen> {
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return '';
+    if (date == null) return 'unknown';
     final now = DateTime.now();
     final difference = now.difference(date);
 
     if (difference.inDays == 0) {
       if (difference.inHours == 0) {
+        if (difference.inMinutes == 0) {
+          return 'just now';
+        }
         return '${difference.inMinutes}m ago';
       }
       return '${difference.inHours}h ago';

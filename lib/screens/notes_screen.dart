@@ -210,62 +210,50 @@ class _NotesScreenState extends State<NotesScreen> {
 
   Widget _buildNoteCard(Note note) {
     final updatedDate = note.updatedAtDate ?? note.createdAtDate;
+    final createdDate = note.createdAtDate;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
+        ),
+      ),
       child: InkWell(
         onTap: () {
           _showNoteDrawer(note);
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (note.fav)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        Icons.star,
-                        size: 16,
-                        color: Colors.amber[700],
-                      ),
-                    ),
-                  if (note.shareid != null && note.shareid!.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(
-                        Icons.share,
-                        size: 16,
-                        color: Colors.blue,
-                      ),
-                    ),
                   Expanded(
-                    child: Text(
-                      note.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          note.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            height: 1.3,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   _buildNoteMenu(note),
                 ],
               ),
@@ -275,8 +263,9 @@ class _NotesScreenState extends State<NotesScreen> {
                 style: TextStyle(
                   color: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
-                  fontSize: 15,
+                  ).textTheme.bodyMedium?.color?.withValues(alpha: 0.65),
+                  fontSize: 14,
+                  height: 1.5,
                 ),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -284,6 +273,67 @@ class _NotesScreenState extends State<NotesScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
+                  if (note.fav)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Favorite',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.amber[900],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (note.shareid != null && note.shareid!.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.share, size: 12, color: Colors.green[800]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Shared',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.green[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   const Spacer(),
                   Icon(
                     Icons.access_time,
@@ -294,7 +344,7 @@ class _NotesScreenState extends State<NotesScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _formatDate(updatedDate),
+                    createdDate != null ? _formatDate(createdDate) : 'No date',
                     style: TextStyle(
                       fontSize: 12,
                       color: Theme.of(
@@ -537,12 +587,15 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return '';
+    if (date == null) return 'unknown';
     final now = DateTime.now();
     final difference = now.difference(date);
 
     if (difference.inDays == 0) {
       if (difference.inHours == 0) {
+        if (difference.inMinutes == 0) {
+          return 'just now';
+        }
         return '${difference.inMinutes}m ago';
       }
       return '${difference.inHours}h ago';

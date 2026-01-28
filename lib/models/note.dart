@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class Note {
   final int? id;
   final String title;
@@ -81,17 +83,29 @@ class Note {
   DateTime? get updatedAtDate {
     if (lastupdated == null || lastupdated!.isEmpty) return null;
     try {
+      // Try parsing ISO format first
       return DateTime.parse(lastupdated!);
     } catch (e) {
-      return null;
+      // Try parsing custom format "12/28/2025, 6:51:17 PM"
+      try {
+        return DateFormat('M/d/yyyy, h:mm:ss a').parse(lastupdated!);
+      } catch (e2) {
+        return null;
+      }
     }
   }
 
   DateTime? get createdAtDate {
     try {
+      // Try parsing ISO format first
       return DateTime.parse(createdAt);
     } catch (e) {
-      return null;
+      // Try parsing custom format "12/28/2025, 6:51:17 PM"
+      try {
+        return DateFormat('M/d/yyyy, h:mm:ss a').parse(createdAt);
+      } catch (e2) {
+        return null;
+      }
     }
   }
 }
