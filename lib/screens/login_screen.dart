@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,20 +15,19 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _tokenController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final ApiService _apiService = ApiService();
+  final StorageService _storage = StorageService();
   bool _isLoading = false;
-  bool _obscureToken = true;
+  bool _obscurePassword = true;
+  String? _errorMessage;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-
-  // Pre-filled token for convenience
-  final String _defaultToken =
-      '0a8b8ed7914bb429b1109383e5e370d77a589b9062d07da8770c5def53fb06cc';
 
   @override
   void initState() {
     super.initState();
-    _tokenController.text = _defaultToken;
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
@@ -42,25 +43,54 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
-    _tokenController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
 
-      // Simulate API validation
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-
-        // Navigate to dashboard
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      try {
+        final response = await _apiService.login(
+          _usernameController.text.trim(),
+          _passwordController.text,
         );
+
+        // Save authentication state and token if provided
+        if (response['token'] != null) {
+          await _storage.setApiToken(response['token']);
+          _apiService.clearCache();
+        }
+        await _storage.setAuthenticated(true);
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+
+          // Navigate to dashboard
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        }
+      } on ApiException catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = e.message;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'An unexpected error occurred. Please try again.';
+          });
+        }
       }
     }
   }
@@ -129,22 +159,75 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                           const SizedBox(height: 32),
 
-                          // API Token Field
+                          // Error Message
+                          if (_errorMessage != null)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: TextStyle(
+                                        color: Colors.red.shade700,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (_errorMessage != null) const SizedBox(height: 16),
+
+                          // Username Field
                           TextFormField(
-                            controller: _tokenController,
+                            controller: _usernameController,
                             decoration: InputDecoration(
-                              labelText: 'API Token',
-                              hintText: 'Enter your API token',
-                              prefixIcon: const Icon(Icons.vpn_key),
+                              labelText: 'Username',
+                              hintText: 'Enter your username',
+                              prefixIcon: const Icon(Icons.person_outline),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            autofocus: true,
+                            textInputAction: TextInputAction.next,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your username';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Password Field
+                          TextFormField(
+                            controller: _passwordController,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              hintText: 'Enter your password',
+                              prefixIcon: const Icon(Icons.lock_outline),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscureToken
+                                  _obscurePassword
                                       ? Icons.visibility
                                       : Icons.visibility_off,
                                 ),
                                 onPressed: () {
                                   setState(
-                                    () => _obscureToken = !_obscureToken,
+                                    () => _obscurePassword = !_obscurePassword,
                                   );
                                 },
                               ),
@@ -152,13 +235,12 @@ class _LoginScreenState extends State<LoginScreen>
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            obscureText: _obscureToken,
+                            obscureText: _obscurePassword,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _handleLogin(),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Please enter your API token';
-                              }
-                              if (value.length != 64) {
-                                return 'Token must be 64 characters';
+                                return 'Please enter your password';
                               }
                               return null;
                             },

@@ -65,6 +65,15 @@ dependencies:
 
   # Charts
   fl_chart: ^0.69.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: "launcher_icon" # or true to override default
+  ios: true # or true to override default
+  image_path: "assets/icon/icon.png"
+  # Optional: for adaptive icons on Android
+  # adaptive_icon_background: "#ffffff"
+  # adaptive_icon_foreground: "assets/icon/foreground.png"
 
 dev_dependencies:
   flutter_test:

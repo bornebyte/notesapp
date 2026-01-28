@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
 import 'notes_screen.dart';
+import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -46,7 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<Widget> screens = [
       _buildDashboardView(),
       const NotesScreen(),
-      _buildSettingsView(),
+      const SettingsScreen(),
     ];
 
     return Scaffold(
@@ -182,7 +183,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             Icon(
               Icons.wb_sunny_outlined,
-              size: 60,
+              size: 40,
               color: Colors.orange.shade300,
             ),
           ],
@@ -262,7 +263,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(height: 12),
             Text(
@@ -339,7 +340,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [
-              Icon(icon, color: color, size: 32),
+              Icon(icon, color: color, size: 24),
               const SizedBox(height: 8),
               Text(title, style: Theme.of(context).textTheme.titleMedium),
             ],
@@ -424,62 +425,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             context,
           ).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsView() {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Account'),
-              subtitle: const Text('Shubham Shah'),
-              trailing: const Icon(Icons.chevron_right),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Consumer<ThemeProvider>(
-              builder: (context, provider, _) {
-                return SwitchListTile(
-                  secondary: Icon(
-                    provider.themeMode == ThemeMode.dark
-                        ? Icons.dark_mode
-                        : Icons.light_mode,
-                  ),
-                  title: const Text('Dark Mode'),
-                  subtitle: const Text('Toggle dark/light theme'),
-                  value: provider.themeMode == ThemeMode.dark,
-                  onChanged: (value) => provider.toggleTheme(),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.info),
-              title: const Text('About'),
-              subtitle: const Text('Version 1.0.0'),
-              trailing: const Icon(Icons.chevron_right),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.of(context).pushReplacementNamed('/login');
-              },
-            ),
-          ),
-        ],
       ),
     );
   }
