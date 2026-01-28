@@ -468,11 +468,8 @@ class ApiService {
   }
 
   // Inbox/Notifications methods (backend uses /api/notifications)
-  Future<Map<String, dynamic>> getNotifications({
-    String filter = '*',
-    bool useCache = true,
-  }) async {
-    final cacheKey = 'notifications_$filter';
+  Future<Map<String, dynamic>> getNotifications({bool useCache = true}) async {
+    const cacheKey = 'notifications_all';
 
     if (useCache) {
       final cached = _cache.get<Map<String, dynamic>>(cacheKey);
@@ -484,12 +481,7 @@ class ApiService {
       final headers = await _headers;
 
       final response = await http
-          .get(
-            Uri.parse(
-              '$domain/api/notifications?filter=${Uri.encodeComponent(filter)}',
-            ),
-            headers: headers,
-          )
+          .get(Uri.parse('$domain/api/notifications'), headers: headers)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -502,14 +494,29 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // API returns [notifications, filters]
+        // API returns [[notifications]]
+        final notificationsList = (data[0] as List)
+            .map((json) => Notification.fromJson(json))
+            .toList();
+
+        // Generate filters dynamically from notifications
+        final categoryMap = <String, String>{};
+        for (final notif in notificationsList) {
+          if (notif.category != null && notif.label != null) {
+            categoryMap[notif.category!] = notif.label!;
+          }
+        }
+
+        final filtersList = [
+          FilterOption(category: '*', label: 'All'),
+          ...categoryMap.entries.map(
+            (e) => FilterOption(category: e.key, label: e.value),
+          ),
+        ];
+
         final result = {
-          'notifications': (data[0] as List)
-              .map((json) => Notification.fromJson(json))
-              .toList(),
-          'filters': (data[1] as List)
-              .map((json) => FilterOption.fromJson(json))
-              .toList(),
+          'notifications': notificationsList,
+          'filters': filtersList,
         };
 
         _cache.set(cacheKey, result);

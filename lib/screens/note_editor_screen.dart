@@ -25,8 +25,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     super.initState();
     _titleController = TextEditingController(text: widget.note?.title ?? '');
     _bodyController = TextEditingController(text: widget.note?.body ?? '');
-    _categoryController =
-        TextEditingController(text: widget.note?.category ?? '');
+    _categoryController = TextEditingController(
+      text: widget.note?.category ?? '',
+    );
   }
 
   @override
@@ -93,10 +94,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.check),
-              onPressed: _saveNote,
-            ),
+            IconButton(icon: const Icon(Icons.check), onPressed: _saveNote),
         ],
       ),
       body: Form(
@@ -110,10 +108,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 labelText: 'Title',
                 hintText: 'Enter note title',
               ),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Please enter a title';

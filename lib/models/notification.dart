@@ -1,19 +1,17 @@
+import 'package:intl/intl.dart';
+
 class Notification {
   final int? id;
   final String title;
-  final String message;
   final String? category;
   final String? label;
-  final bool? read;
   final String? createdAt;
 
   Notification({
     this.id,
     required this.title,
-    required this.message,
     this.category,
     this.label,
-    this.read,
     this.createdAt,
   });
 
@@ -21,10 +19,8 @@ class Notification {
     return Notification(
       id: json['id'] as int?,
       title: json['title'] as String? ?? '',
-      message: json['message'] as String? ?? '',
       category: json['category'] as String?,
       label: json['label'] as String?,
-      read: json['read'] as bool?,
       createdAt: json['created_at'] as String?,
     );
   }
@@ -33,10 +29,8 @@ class Notification {
     return {
       if (id != null) 'id': id,
       'title': title,
-      'message': message,
       if (category != null) 'category': category,
       if (label != null) 'label': label,
-      if (read != null) 'read': read,
       if (createdAt != null) 'created_at': createdAt,
     };
   }
@@ -44,9 +38,16 @@ class Notification {
   DateTime? get createdAtDate {
     if (createdAt == null) return null;
     try {
-      return DateTime.parse(createdAt!);
+      // Parse format like "9/4/2025, 1:51:31 PM"
+      final format = DateFormat('M/d/yyyy, h:mm:ss a');
+      return format.parse(createdAt!);
     } catch (e) {
-      return null;
+      // Fallback to ISO format if parsing fails
+      try {
+        return DateTime.parse(createdAt!);
+      } catch (e) {
+        return null;
+      }
     }
   }
 }

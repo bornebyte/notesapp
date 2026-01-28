@@ -12,7 +12,7 @@ class InboxScreen extends StatefulWidget {
 
 class _InboxScreenState extends State<InboxScreen> {
   final ApiService _apiService = ApiService();
-  List<Notification> _notifications = [];
+  List<Notification> _allNotifications = [];
   List<FilterOption> _filters = [];
   String _selectedFilter = '*';
   bool _isLoading = true;
@@ -24,6 +24,15 @@ class _InboxScreenState extends State<InboxScreen> {
     _loadNotifications();
   }
 
+  List<Notification> get _filteredNotifications {
+    if (_selectedFilter == '*') {
+      return _allNotifications;
+    }
+    return _allNotifications
+        .where((n) => n.category == _selectedFilter)
+        .toList();
+  }
+
   Future<void> _loadNotifications({bool useCache = true}) async {
     setState(() {
       _isLoading = true;
@@ -31,13 +40,10 @@ class _InboxScreenState extends State<InboxScreen> {
     });
 
     try {
-      final result = await _apiService.getNotifications(
-        filter: _selectedFilter,
-        useCache: useCache,
-      );
+      final result = await _apiService.getNotifications(useCache: useCache);
       if (mounted) {
         setState(() {
-          _notifications = result['notifications'] as List<Notification>;
+          _allNotifications = result['notifications'] as List<Notification>;
           _filters = result['filters'] as List<FilterOption>;
           _isLoading = false;
         });
@@ -52,13 +58,12 @@ class _InboxScreenState extends State<InboxScreen> {
     }
   }
 
-  Future<void> _handleFilterChange(String? filter) async {
+  void _handleFilterChange(String? filter) {
     if (filter == null || filter == _selectedFilter) return;
 
     setState(() {
       _selectedFilter = filter;
     });
-    await _loadNotifications(useCache: true);
   }
 
   @override
@@ -148,7 +153,7 @@ class _InboxScreenState extends State<InboxScreen> {
       );
     }
 
-    if (_notifications.isEmpty) {
+    if (_filteredNotifications.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -177,9 +182,9 @@ class _InboxScreenState extends State<InboxScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: _notifications.length,
+      itemCount: _filteredNotifications.length,
       itemBuilder: (context, index) =>
-          _buildNotificationCard(_notifications[index]),
+          _buildNotificationCard(_filteredNotifications[index]),
     );
   }
 
@@ -203,23 +208,11 @@ class _InboxScreenState extends State<InboxScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    notification.message,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatTime(notification.createdAtDate),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            Text(
+              _formatTime(notification.createdAtDate),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 4),
             Row(
@@ -295,7 +288,6 @@ class _InboxScreenState extends State<InboxScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
-              Text(notification.message),
               const SizedBox(height: 12),
               Text(
                 'Received: ${_formatDateFull(notification.createdAtDate)}',
@@ -325,6 +317,8 @@ class _InboxScreenState extends State<InboxScreen> {
         return Colors.green;
       case 'info':
         return Colors.blue;
+      case 'shareidcreated':
+        return Colors.teal;
       default:
         return Colors.purple;
     }
@@ -341,6 +335,8 @@ class _InboxScreenState extends State<InboxScreen> {
         return Icons.check_circle;
       case 'info':
         return Icons.info;
+      case 'shareidcreated':
+        return Icons.share;
       default:
         return Icons.notifications;
     }
