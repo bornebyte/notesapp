@@ -33,7 +33,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final favorites = provider.notes.where((note) => note.fav).toList();
+          final favorites = provider.notes.where((note) => note.fav).toList()
+            ..sort((a, b) {
+              final aDate = a.createdAtDate ?? DateTime(0);
+              final bDate = b.createdAtDate ?? DateTime(0);
+              return bDate.compareTo(aDate); // Newest first
+            });
 
           if (favorites.isEmpty) {
             return Center(

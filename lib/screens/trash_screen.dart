@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/notes_provider.dart';
 import '../models/note.dart';
+import '../services/api_service.dart';
 
 class TrashScreen extends StatefulWidget {
   const TrashScreen({super.key});
@@ -12,49 +13,47 @@ class TrashScreen extends StatefulWidget {
 }
 
 class _TrashScreenState extends State<TrashScreen> {
+  final ApiService _apiService = ApiService();
+  List<Note> _trashedNotes = [];
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
-    // Fetch notes when screen loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<NotesProvider>(context, listen: false).fetchNotes();
-    });
+    _loadTrashedNotes();
+  }
+
+  Future<void> _loadTrashedNotes() async {
+    setState(() => _isLoading = true);
+    try {
+      final notes = await _apiService.getTrashedNotes();
+      if (mounted) {
+        setState(() {
+          // Sort by created date, newest first
+          _trashedNotes = notes
+            ..sort((a, b) {
+              final aDate = a.createdAtDate ?? DateTime(0);
+              final bDate = b.createdAtDate ?? DateTime(0);
+              return bDate.compareTo(aDate); // Newest first
+            });
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Trash'),
-        actions: [
-          Consumer<NotesProvider>(
-            builder: (context, provider, _) {
-              final trashedNotes = provider.allNotes
-                  .where((note) => note.trash)
-                  .toList();
-              if (trashedNotes.isEmpty) return const SizedBox();
-
-              return TextButton.icon(
-                onPressed: () => _showEmptyTrashDialog(trashedNotes),
-                icon: const Icon(Icons.delete_forever),
-                label: const Text('Empty Trash'),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Consumer<NotesProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final trashedNotes = provider.allNotes
-              .where((note) => note.trash)
-              .toList();
-
-          if (trashedNotes.isEmpty) {
-            return Center(
+      appBar: AppBar(title: const Text('Trash')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _trashedNotes.isEmpty
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -75,21 +74,17 @@ class _TrashScreenState extends State<TrashScreen> {
                   ),
                 ],
               ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => provider.fetchNotes(),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: trashedNotes.length,
-              itemBuilder: (context, index) {
-                return _buildTrashCard(trashedNotes[index]);
-              },
+            )
+          : RefreshIndicator(
+              onRefresh: _loadTrashedNotes,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _trashedNotes.length,
+                itemBuilder: (context, index) {
+                  return _buildTrashCard(_trashedNotes[index]);
+                },
+              ),
             ),
-          );
-        },
-      ),
     );
   }
 
@@ -111,62 +106,16 @@ class _TrashScreenState extends State<TrashScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    note.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      height: 1.3,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'restore') {
-                      await _restoreNote(note);
-                    } else if (value == 'delete') {
-                      await _deleteNotePermanently(note);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'restore',
-                      child: Row(
-                        children: [
-                          Icon(Icons.restore, size: 20),
-                          SizedBox(width: 12),
-                          Text('Restore'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_forever,
-                            size: 20,
-                            color: Colors.red,
-                          ),
-                          SizedBox(width: 12),
-                          Text(
-                            'Delete Permanently',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            Text(
+              note.title,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                height: 1.3,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 12),
             Text(
@@ -181,20 +130,70 @@ class _TrashScreenState extends State<TrashScreen> {
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Row(
               children: [
-                OutlinedButton.icon(
-                  onPressed: () => _restoreNote(note),
-                  icon: const Icon(Icons.restore, size: 18),
-                  label: const Text('Restore'),
-                  style: OutlinedButton.styleFrom(
+                if (note.fav)
+                  Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    margin: const EdgeInsets.only(right: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.amber.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Favorite',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.amber[900],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                if (note.shareid != null && note.shareid!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.green.withValues(alpha: 0.4),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.share, size: 12, color: Colors.green[800]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Shared',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const Spacer(),
                 Icon(
                   Icons.access_time,
@@ -215,6 +214,18 @@ class _TrashScreenState extends State<TrashScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _restoreNote(note),
+              icon: const Icon(Icons.restore, size: 18),
+              label: const Text('Restore'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -225,6 +236,9 @@ class _TrashScreenState extends State<TrashScreen> {
     final provider = Provider.of<NotesProvider>(context, listen: false);
     await provider.toggleTrash(note.id!, false);
 
+    // Reload trashed notes
+    await _loadTrashedNotes();
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -232,80 +246,6 @@ class _TrashScreenState extends State<TrashScreen> {
           duration: Duration(seconds: 2),
         ),
       );
-    }
-  }
-
-  Future<void> _deleteNotePermanently(Note note) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Permanently'),
-        content: Text(
-          'Are you sure you want to permanently delete "${note.title}"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final provider = Provider.of<NotesProvider>(context, listen: false);
-      final success = await provider.deleteNote(note.id!);
-
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Note permanently deleted')),
-        );
-      }
-    }
-  }
-
-  Future<void> _showEmptyTrashDialog(List<Note> trashedNotes) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Empty Trash'),
-        content: Text(
-          'Are you sure you want to permanently delete all ${trashedNotes.length} items in trash? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Empty Trash'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final provider = Provider.of<NotesProvider>(context, listen: false);
-
-      // Delete all trashed notes
-      for (final note in trashedNotes) {
-        await provider.deleteNote(note.id!);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${trashedNotes.length} notes permanently deleted'),
-          ),
-        );
-      }
     }
   }
 
