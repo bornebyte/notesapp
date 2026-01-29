@@ -5,6 +5,7 @@ import '../models/note.dart';
 import '../models/notification.dart';
 import '../models/target_date.dart';
 import '../models/api_token.dart';
+import '../models/dashboard_models.dart';
 import 'storage_service.dart';
 import 'cache_service.dart';
 
@@ -869,6 +870,141 @@ class ApiService {
       if (response.statusCode != 200) {
         final data = json.decode(response.body);
         throw ApiException(data['message'] ?? 'Failed to delete token');
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  // Dashboard productivity data (7 days)
+  Future<List<ProductivityData>> getProductivityData({
+    bool useCache = true,
+  }) async {
+    const cacheKey = 'dashboard_productivity';
+
+    if (useCache) {
+      final cached = _cache.get<List<ProductivityData>>(cacheKey);
+      if (cached != null) return cached;
+    }
+
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .get(
+            Uri.parse('$domain/api/dashboard/productivity'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final productivity = data
+            .map((e) => ProductivityData.fromJson(e))
+            .toList();
+        _cache.set(cacheKey, productivity);
+        return productivity;
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  // Dashboard activity feed
+  Future<List<ActivityItem>> getActivityFeed({bool useCache = true}) async {
+    const cacheKey = 'dashboard_activity';
+
+    if (useCache) {
+      final cached = _cache.get<List<ActivityItem>>(cacheKey);
+      if (cached != null) return cached;
+    }
+
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .get(Uri.parse('$domain/api/dashboard/activity'), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final activity = data.map((e) => ActivityItem.fromJson(e)).toList();
+        _cache.set(cacheKey, activity);
+        return activity;
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  // Notes chart data (monthly)
+  Future<List<MonthlyChartData>> getNotesChartData({
+    bool useCache = true,
+  }) async {
+    const cacheKey = 'notes_chart';
+
+    if (useCache) {
+      final cached = _cache.get<List<MonthlyChartData>>(cacheKey);
+      if (cached != null) return cached;
+    }
+
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .get(Uri.parse('$domain/api/notes/chart'), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final chartData = data
+            .map((e) => MonthlyChartData.fromJson(e))
+            .toList();
+        _cache.set(cacheKey, chartData);
+        return chartData;
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw _handleError(e);
+    }
+  }
+
+  // Updated dashboard stats method to return typed data
+  Future<DashboardStats> getDashboardStatsTyped({bool useCache = true}) async {
+    const cacheKey = 'dashboard_stats_typed';
+
+    if (useCache) {
+      final cached = _cache.get<DashboardStats>(cacheKey);
+      if (cached != null) return cached;
+    }
+
+    try {
+      final domain = await baseUrl;
+      final headers = await _headers;
+
+      final response = await http
+          .get(Uri.parse('$domain/api/dashboard/stats'), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final stats = DashboardStats.fromJson(data);
+        _cache.set(cacheKey, stats);
+        return stats;
+      } else {
+        throw _handleError(null, statusCode: response.statusCode);
       }
     } catch (e) {
       if (e is ApiException) rethrow;

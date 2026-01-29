@@ -83,16 +83,19 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
+          tooltip: 'Back',
         ),
         title: Text(
-          widget.note == null ? 'Create Note' : 'Edit Note',
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          widget.note == null ? 'New Note' : 'Edit Note',
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
         ),
         actions: [
           if (_isSaving)
@@ -100,23 +103,27 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20.0),
                 child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
                 ),
               ),
             )
           else
             Padding(
-              padding: const EdgeInsets.only(right: 8.0),
+              padding: const EdgeInsets.only(right: 12.0),
               child: FilledButton.icon(
                 onPressed: _saveNote,
-                icon: const Icon(Icons.check, size: 18),
+                icon: const Icon(Icons.save_rounded, size: 18),
                 label: const Text('Save'),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -126,46 +133,61 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.all(24),
           children: [
+            // Title Field
             Container(
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                  width: 1,
-                ),
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(20),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: TextFormField(
                 controller: _titleController,
+                autofocus: widget.note == null,
                 decoration: InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'Enter note title',
-                  prefixIcon: Icon(
-                    Icons.title,
-                    color: Theme.of(context).colorScheme.primary,
+                  hintText: 'Note Title',
+                  hintStyle: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.35),
                   ),
+                  filled: false,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 20,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  isCollapsed: true,
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Icon(
+                      Icons.edit_note_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 24,
+                    ),
                   ),
-                  labelStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w500,
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 0,
+                    minHeight: 0,
                   ),
                 ),
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 20,
                   fontWeight: FontWeight.w600,
                   height: 1.4,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
+                maxLines: 3,
+                textCapitalization: TextCapitalization.sentences,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a title';
+                    return 'Title is required';
                   }
                   if (value.trim().length > 255) {
                     return 'Title must be 255 characters or less';
@@ -175,80 +197,49 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            // Body Field
             Container(
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                  width: 1,
-                ),
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(20),
               ),
+              padding: const EdgeInsets.all(20),
               child: TextFormField(
                 controller: _bodyController,
                 decoration: InputDecoration(
-                  labelText: 'Content',
-                  hintText: 'Start writing your note...',
-                  alignLabelWithHint: true,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.all(20),
-                  labelStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  hintText: 'Start writing your note here...',
                   hintStyle: TextStyle(
+                    fontSize: 16,
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ).colorScheme.onSurface.withValues(alpha: 0.4),
+                    height: 1.6,
                   ),
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  isCollapsed: true,
                 ),
                 maxLines: null,
-                minLines: 15,
-                style: const TextStyle(fontSize: 16, height: 1.6),
+                minLines: 18,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.7,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                textCapitalization: TextCapitalization.sentences,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter some content';
+                    return 'Content is required';
                   }
                   return null;
                 },
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Your note will be saved automatically when you press the Save button.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ],
