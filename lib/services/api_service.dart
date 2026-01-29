@@ -782,7 +782,7 @@ class ApiService {
       final headers = await _headers;
 
       final response = await http
-          .get(Uri.parse('$domain/api/auth/token'), headers: headers)
+          .get(Uri.parse('$domain/api/tokens'), headers: headers)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {
@@ -818,7 +818,7 @@ class ApiService {
 
       final response = await http
           .post(
-            Uri.parse('$domain/api/auth/token'),
+            Uri.parse('$domain/api/tokens'),
             headers: headers,
             body: json.encode({'name': name}),
           )
@@ -853,10 +853,7 @@ class ApiService {
       final headers = await _headers;
 
       final response = await http
-          .delete(
-            Uri.parse('$domain/api/auth/token?id=$tokenId'),
-            headers: headers,
-          )
+          .delete(Uri.parse('$domain/api/tokens?id=$tokenId'), headers: headers)
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () {

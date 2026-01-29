@@ -25,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _obscureToken = true;
   bool _obscurePassword = true;
   List<ApiToken> _apiTokens = [];
+  final Set<int> _visibleTokens = {};
 
   @override
   void initState() {
@@ -209,13 +210,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade400),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
               child: SelectableText(
                 token,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -514,6 +521,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildApiTokenCard(ApiToken token) {
     final isRevoked = token.revoked;
+    final isVisible = _visibleTokens.contains(token.id);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -579,7 +587,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               child: SelectableText(
-                                token.token,
+                                isVisible ? token.token : '•' * 32,
                                 style: const TextStyle(
                                   fontFamily: 'monospace',
                                   fontSize: 11,
@@ -588,6 +596,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(
+                              isVisible
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            tooltip: isVisible ? 'Hide token' : 'Show token',
+                            onPressed: () {
+                              setState(() {
+                                if (isVisible) {
+                                  _visibleTokens.remove(token.id);
+                                } else {
+                                  _visibleTokens.add(token.id);
+                                }
+                              });
+                            },
+                          ),
                           IconButton(
                             icon: const Icon(Icons.copy),
                             tooltip: 'Copy token',

@@ -434,15 +434,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(20.0),
             child: SizedBox(
               height: 200,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: _chartData!.map((data) {
-                  final height = maxCount > 0
-                      ? (data.count / maxCount) * 135
-                      : 20.0;
-                  return Expanded(
-                    child: Padding(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: _chartData!.map((data) {
+                    final height = maxCount > 0
+                        ? (data.count / maxCount) * 135
+                        : 20.0;
+                    return Container(
+                      width: 50,
                       padding: const EdgeInsets.symmetric(horizontal: 2),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -475,9 +476,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
           ),

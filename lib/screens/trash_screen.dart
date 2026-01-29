@@ -181,9 +181,20 @@ class _TrashScreenState extends State<TrashScreen> {
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
+                OutlinedButton.icon(
+                  onPressed: () => _restoreNote(note),
+                  icon: const Icon(Icons.restore, size: 18),
+                  label: const Text('Restore'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
                 const Spacer(),
                 Icon(
                   Icons.access_time,
