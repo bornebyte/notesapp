@@ -174,6 +174,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildStatsGrid() {
     if (_stats == null) return const SizedBox();
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = screenWidth > 800 ? 3 : 2;
+    final childAspectRatio = screenWidth > 800 ? 2.0 : 1.5;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -187,12 +191,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         GridView.count(
-          crossAxisCount: 2,
+          crossAxisCount: crossAxisCount,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.5,
+          childAspectRatio: childAspectRatio,
           children: [
             _buildStatCard(
               'Total Notes',
@@ -249,27 +253,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const Spacer(),
+            const SizedBox(height: 8),
             Text(
               value,
               style: Theme.of(
                 context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               title,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
