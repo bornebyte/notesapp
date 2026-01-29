@@ -7,6 +7,7 @@ import '../services/storage_service.dart';
 import '../services/api_service.dart';
 import '../models/api_token.dart';
 import 'login_screen.dart';
+import 'api_config_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,10 +20,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final StorageService _storage = StorageService();
   final ApiService _apiService = ApiService();
   final _domainController = TextEditingController();
-  final _tokenController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _obscureToken = true;
   bool _obscurePassword = true;
   List<ApiToken> _apiTokens = [];
   final Set<int> _visibleTokens = {};
@@ -36,10 +35,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final domain = await _storage.getDomain();
-    final token = await _storage.getApiToken();
     setState(() {
       _domainController.text = domain;
-      _tokenController.text = token;
     });
   }
 
@@ -57,74 +54,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _domainController.dispose();
-    _tokenController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _testConnection() async {
-    if (_domainController.text.trim().isEmpty) {
-      _showMessage('Please enter a domain', isError: true);
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _storage.setDomain(_domainController.text.trim());
-      if (_tokenController.text.trim().isNotEmpty) {
-        await _storage.setApiToken(_tokenController.text.trim());
-      }
-
-      _apiService.clearCache();
-
-      final success = await _apiService.testConnection();
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (success) {
-          _showMessage('Connection successful!', isError: false);
-        } else {
-          _showMessage(
-            'Connection failed. Please check your domain and API token.',
-            isError: true,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showMessage('Error testing connection: $e', isError: true);
-      }
-    }
-  }
-
-  Future<void> _saveSettings() async {
-    if (_domainController.text.trim().isEmpty) {
-      _showMessage('Domain cannot be empty', isError: true);
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _storage.setDomain(_domainController.text.trim());
-      if (_tokenController.text.trim().isNotEmpty) {
-        await _storage.setApiToken(_tokenController.text.trim());
-      }
-
-      _apiService.clearCache();
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showMessage('Settings saved successfully!', isError: false);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showMessage('Error saving settings: $e', isError: true);
-      }
-    }
   }
 
   Future<void> _changePassword() async {
@@ -317,78 +248,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildApiConfigSection() {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.dns),
-                const SizedBox(width: 12),
-                Text(
-                  'API Configuration',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _domainController,
-              decoration: InputDecoration(
-                labelText: 'Domain URL',
-                hintText: 'https://api.example.com',
-                prefixIcon: const Icon(Icons.language),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ApiConfigScreen()),
+          );
+          // Reload settings if they were saved
+          if (result == true) {
+            _loadSettings();
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.dns),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'API Configuration',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios, size: 16),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Configure domain and API token',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
                 ),
               ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _tokenController,
-              decoration: InputDecoration(
-                labelText: 'API Token',
-                hintText: 'Enter your API token',
-                prefixIcon: const Icon(Icons.key),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscureToken ? Icons.visibility : Icons.visibility_off,
+              const SizedBox(height: 12),
+              if (_domainController.text.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  onPressed: () {
-                    setState(() => _obscureToken = !_obscureToken);
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              obscureText: _obscureToken,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _testConnection,
-                    icon: const Icon(Icons.wifi_find),
-                    label: const Text('Test'),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.link, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _domainController.text,
+                          style: Theme.of(context).textTheme.bodySmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _isLoading ? null : _saveSettings,
-                    icon: const Icon(Icons.save),
-                    label: const Text('Save'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -812,16 +736,107 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+
+            // Developer Information
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Developer Photo
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(50),
+                  child: Image.asset(
+                    'assets/images/me.jpg',
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.person,
+                          size: 40,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Developer Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Shubham Shah',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Developer',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            const Divider(),
             const SizedBox(height: 8),
+
+            // GitHub Link
             ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.code),
+              title: const Text('GitHub'),
+              subtitle: const Text('github.com/bornebyte'),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () {
+                // Open GitHub link
+                _showMessage(
+                  'GitHub: https://github.com/bornebyte',
+                  isError: false,
+                );
+              },
+            ),
+
+            // Email Link
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.email),
+              title: const Text('Email'),
+              subtitle: const Text('shahshubham1888@gmail.com'),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () {
+                // Copy email or show email client
+                Clipboard.setData(
+                  const ClipboardData(text: 'shahshubham1888@gmail.com'),
+                );
+                _showMessage('Email copied to clipboard', isError: false);
+              },
+            ),
+
+            const Divider(),
+            const SizedBox(height: 8),
+
+            // App Version
+            ListTile(
+              contentPadding: EdgeInsets.zero,
               title: const Text('Version'),
               subtitle: const Text('1.0.0'),
               trailing: const Icon(Icons.info_outline),
-            ),
-            ListTile(
-              title: const Text('Developer'),
-              subtitle: const Text('Notes App'),
-              trailing: const Icon(Icons.code),
             ),
           ],
         ),

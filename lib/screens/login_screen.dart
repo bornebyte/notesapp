@@ -4,6 +4,7 @@ import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import 'dashboard_screen.dart';
+import 'api_config_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -276,6 +277,27 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               );
                             },
+                          ),
+                          const SizedBox(height: 12),
+
+                          // API Configuration Button
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ApiConfigScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.settings),
+                            label: const Text('Configure API'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 24),
 
