@@ -97,6 +97,12 @@ class NotesProvider with ChangeNotifier {
 
     try {
       _notes = await _apiService.getNotes();
+      // Sort notes by created date, newest first
+      _notes.sort((a, b) {
+        final aDate = a.createdAtDate ?? DateTime(0);
+        final bDate = b.createdAtDate ?? DateTime(0);
+        return bDate.compareTo(aDate);
+      });
       _applyFiltersAndSort();
       _error = null;
     } catch (e) {

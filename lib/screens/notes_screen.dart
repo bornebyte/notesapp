@@ -209,7 +209,6 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   Widget _buildNoteCard(Note note) {
-    final updatedDate = note.updatedAtDate ?? note.createdAtDate;
     final createdDate = note.createdAtDate;
 
     return Card(
@@ -458,9 +457,9 @@ class _NotesScreenState extends State<NotesScreen> {
           value: 'trash',
           child: Row(
             children: [
-              Icon(Icons.delete_outline, size: 20),
+              Icon(Icons.delete_outline, size: 20, color: Colors.red),
               SizedBox(width: 12),
-              Text('Move to Trash'),
+              Text('Move to Trash', style: TextStyle(color: Colors.red)),
             ],
           ),
         ),
